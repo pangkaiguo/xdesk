@@ -1,0 +1,86 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: xdesk-postgres-service
+    restart: unless-stopped
+    ports:
+      - 6543:5432
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "10"
+    env_file:
+      - ./xdesk-server/.env
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - xdesk-bridge
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_container
+    restart: unless-stopped
+    ports:
+      - 5050:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pgadmin4@xsky.com
+      PGADMIN_DEFAULT_PASSWORD: pgadmin4
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    networks:
+      - xdesk-bridge
+
+  xdesk-server:
+    image: xdesk-server:latest
+    container_name: xdesk-server-service
+    restart: unless-stopped
+    build:
+      context: ./xdesk-server
+      dockerfile: Dockerfile
+    ports:
+      - 3333:3333
+    depends_on:
+      - postgres
+    links:
+      - postgres:postgres
+    env_file:
+      - ./xdesk-server/.env
+    volumes:
+      # base volumes naming`xdesk-server`: depend on docker-compose version 3
+      - xdesk-server:/home/node/xdesk-server
+    networks:
+      - xdesk-bridge
+    command: sleep infinity
+
+  xdesk-client:
+    image: xdesk-client:latest
+    container_name: xdesk-client-service
+    restart: unless-stopped
+    build:
+      context: ./xdesk-client
+      dockerfile: Dockerfile
+    ports:
+      - 3003:3003
+    volumes:
+      # base volumes naming`xdesk-client`: depend on docker-compose version 3
+      - xdesk-client:/home/node/xdesk-client
+    networks:
+      - xdesk-bridge
+
+# volumes rename: depend on docker-compose version 3
+volumes:
+  postgres:
+    name: xdesk-postgres-volume
+  pgadmin:
+    name: xdesk-pgadmin-volume
+  xdesk-server:
+    name: xdesk-server-volume
+  xdesk-client:
+    name: xdesk-client-volume
+
+networks:
+  xdesk-bridge:
+    driver: bridge
